@@ -79,3 +79,8 @@ python -m tools.workflow.audit_polygon_export --help
 The adapter contract uses small CPU modules; it does not download model weights or prove
 application accuracy. The export audit checks both source coverage and added background
 at pixel centers. Hole approximation must remain explicit when polygons are used for display.
+
+`tools.workflow.track_lifecycle.add_lifecycle_states(frames, gone_gap=25)` accepts
+chronologically increasing frame dictionaries with `frame` and `objects`. Each object entry
+contains its raw-mask `area`. It adds a `states` mapping to each frame and returns the final
+state mapping. Zero-area entries are absent; the configured gap counts frame indices.

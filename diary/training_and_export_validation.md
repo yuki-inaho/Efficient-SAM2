@@ -33,3 +33,10 @@ The public helpers and regression tests preserve generic engineering behavior. L
 capture names, application categories, media, credentials, experiment weights, and raw
 conversation records are excluded from publication. UI round-trip editing and comprehensive
 annotation coverage are not claimed by these checks.
+
+A completion audit also found that visibility state existed only at the end of the clip.
+The generic lifecycle helper now records causal state for each frame: a seen object is
+visible, then lost within the configured absence gap, then gone beyond it. Reappearance
+restores the same identifier. Future appearances do not create earlier state, and depth
+eligibility remains independent of raw-mask visibility. The local annotation adapter and
+overlay use this state sequence.
