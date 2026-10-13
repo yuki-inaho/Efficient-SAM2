@@ -891,9 +891,13 @@ def main():
 
 
     set_seed(1234)
-    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    timestamp = os.environ.get('EFFICIENTSAM_RUN_ID') or time.strftime('%Y%m%d_%H%M%S', time.localtime())
     
-    writer = SummaryWriter('../hahaha/TB_log_'+timestamp)
+    run_dir = os.environ.get('EFFICIENTSAM_RUN_DIR')
+    checkpoint_dir = os.path.join(run_dir, 'checkpoints') if run_dir else './bypass/ckpt'
+    tensorboard_dir = os.path.join(run_dir, 'tensorboard') if run_dir else '../hahaha/TB_log_' + timestamp
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    writer = SummaryWriter(tensorboard_dir)
     
     
     log_file = os.path.join(args.work_dir, f'{timestamp}.log')
@@ -1013,8 +1017,8 @@ def main():
     predictor.use_wandb = args.use_wandb
     predictor.iters = 0
     
+    predictor.writer = writer
     if args.use_wandb:
-        predictor.writer = writer
         try:
             os.environ["WANDB_MODE"] = "offline"
             wandb.init(
@@ -1075,7 +1079,7 @@ def main():
                         per_obj_png_file=args.per_obj_png_file,
                         
                     )
-                    torch.save(predictor.image_encoder.trunk.blocks[args.final_global_layer].bypass_branch.state_dict(), './bypass/ckpt/bypass_{}_{}_EP_{}.pth'.format(args.bypass_type, timestamp, epoch))
+                    torch.save(predictor.image_encoder.trunk.blocks[args.final_global_layer].bypass_branch.state_dict(), os.path.join(checkpoint_dir, 'bypass_{}_{}_EP_{}.pth'.format(args.bypass_type, timestamp, epoch)))
                     
                 else:
                     vos_inference(
@@ -1099,10 +1103,12 @@ def main():
                     use_all_masks=args.use_all_masks,
                     per_obj_png_file=args.per_obj_png_file,
                 )
+        writer.flush()
         torch.cuda.synchronize()
         ed = time.time()
         logger.info('>>>>>>>>>>>>>>>> Training Time (Epoch {}): {} (min)'.format(epoch, (ed-st)/60))
 
+    writer.close()
     print(
         f"completed VOS prediction on {len(video_names)} videos -- "
         f"output masks saved to {args.output_mask_dir}"

@@ -786,10 +786,15 @@ def main():
             predictor.dilate_mask = True
             predictor.dilate_kernel_size = args.dilate_kernel_size
         
+        if args.lora_checkpoint:
+            from lora_adapter import load_image_lora
+            load_image_lora(predictor, args.lora_checkpoint)
+            logger.info('Restored image-encoder LoRA')
         return predictor
             
     
     parser = argparse.ArgumentParser()
+    parser.add_argument("--lora_checkpoint", default=None)
     parser.add_argument(
         "--sam2_model",
         type=str,
@@ -1145,6 +1150,7 @@ def main():
     }
     
     if args.dataset == 'custom':
+        args.output_mask_dir = output_mask_dir
         # ローカル評価用: CLI で与えた base_video_dir/input_mask_dir をそのまま使用(packed 入力)
         args.per_obj_png_file = False
     else:

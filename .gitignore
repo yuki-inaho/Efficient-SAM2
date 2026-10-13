@@ -22,3 +22,9 @@ eval_v3/
 
 # Generated checkpoints may also be archived in nested directories.
 bypass/ckpt/**/*.pth
+
+/runs/
+
+/result/
+
+*.lora.pt

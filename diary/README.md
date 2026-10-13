@@ -1,15 +1,15 @@
-# Annotation quality review records
+# Annotation and training engineering records
 
-This directory contains generalized engineering records for video annotation quality.
-Capture identifiers, object categories, private repository names, local paths, images,
-and credentials are excluded. Numerical examples in the specification are synthetic
-regression fixtures rather than dataset results.
+These records describe reusable engineering behavior. Application categories, capture
+identifiers, private repository names, local paths, images, credentials, and experiment
+weights are excluded.
 
-- [Repair specification](annotation_quality_repair.md): data contracts, changes and acceptance checks.
-- [Implementation record](workdoc_generalized.md): scope of this publication and validation.
+- [Repair specification](annotation_quality_repair.md): contracts and acceptance checks.
+- [Implementation record](workdoc_generalized.md): current changes and validation scope.
 - [Decisions](decisions_generalized.md): identity, validity and publication rules.
+- [Training and export validation](training_and_export_validation.md): concrete defects and fixes.
+- [Generic experiment workflow](experiment_workflow.md): commands and required inputs.
 
-The application adapters mentioned in the specification are external workspace integration
-points. They are not bundled in this repository; the repository implementation change is
-`sam2/sam2_video_predictor.py`. Run its CPU regression suite from the repository root with
-`python -m pytest tests/test_propagate_control_flow.py -q` in an environment with pytest.
+Dataset-specific adapters and local experiment evidence remain outside this repository.
+The generic helpers are under `tools/workflow/`. Neural-network execution requires the
+model environment; most regression tests use CPU fixtures without loading model weights.

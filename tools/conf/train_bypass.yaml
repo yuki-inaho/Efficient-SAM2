@@ -1,0 +1,31 @@
+repo_root: .
+python: .venv/bin/python
+train_script: tools/train_bypass_all.py
+runs_root: runs
+run_name: ???
+dry_run: false
+gate:
+  enabled: true
+  min_free_gb: 20
+  wait_seconds: 600
+data:
+  base_video_dir: ???
+  input_mask_dir: ???
+  video_list_file: ???
+  dataset: sav_train
+model:
+  sam2_model: base+
+  bypass_type: bottleneck
+train:
+  epochs: 2
+  steps: 8
+  lr: 0.0001
+flags:
+  apply_bypass: true
+  apply_WB: true
+  use_wandb: false
+hydra:
+  run:
+    dir: runs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: false

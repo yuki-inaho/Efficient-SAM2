@@ -2758,9 +2758,7 @@ class SAM2VideoPredictor_bypass_mem_filter(sam2_bypass):
                                     #                     avg_loss,
                                     #                     self.iters)
                                     
-                                    self.writer.add_scalar('training loss'.format(self.epoch),
-                                                        avg_loss,
-                                                        self.iters)
+                                self.writer.add_scalar('training loss', avg_loss, self.iters)
                                 
                                 
                                 # 重置累积loss

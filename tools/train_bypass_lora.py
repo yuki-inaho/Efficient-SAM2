@@ -891,9 +891,13 @@ def main():
 
 
     set_seed(1234)
-    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    timestamp = os.environ.get('EFFICIENTSAM_RUN_ID') or time.strftime('%Y%m%d_%H%M%S', time.localtime())
     
-    writer = SummaryWriter('../hahaha/TB_log_'+timestamp)
+    run_dir = os.environ.get('EFFICIENTSAM_RUN_DIR')
+    checkpoint_dir = os.path.join(run_dir, 'checkpoints') if run_dir else './bypass/ckpt'
+    tensorboard_dir = os.path.join(run_dir, 'tensorboard') if run_dir else '../hahaha/TB_log_' + timestamp
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    writer = SummaryWriter(tensorboard_dir)
     
     
     log_file = os.path.join(args.work_dir, f'{timestamp}.log')
@@ -1003,64 +1007,15 @@ def main():
             param.requires_grad=True
             print('enable_bypass_grad:', name)
     
-        # === LoRA trial (local addition; src/make_lora_train_script.py が生成) ===
-        from peft import LoraConfig, inject_adapter_in_model
-
-        def _lora_try(_module, _targets, _name):
-            try:
-                _cfg = LoraConfig(
-                    r=8, lora_alpha=16, lora_dropout=0.0, bias="none",
-                    target_modules=_targets,
-                )
-                _new = inject_adapter_in_model(_cfg, _module)
-                _lora_n = sum(
-                    p.numel() for _n, p in _new.named_parameters() if "lora_" in _n
-                )
-                if _lora_n == 0:
-                    raise RuntimeError("injection produced no lora_ parameters")
-                print(f"[LoRA trial] {_name}: targets={_targets} lora_params={_lora_n}")
-                return _new, _lora_n
-            except Exception as _e:  # WB 構築後の構造変化など
-                print(f"[LoRA trial] {_name} injection failed: {type(_e).__name__}: {_e}")
-                return None, 0
-
-        def _leaf_linear_names(_module):
-            return sorted(
-                {
-                    _n.rsplit(".", 1)[-1]
-                    for _n, _m in _module.named_modules()
-                    if isinstance(_m, torch.nn.Linear)
-                }
-            )
-
-        if any("lora_" in _n for _n, _ in predictor.named_parameters()):
-            print("[LoRA trial] already injected; skip re-injection")
-        else:
-            _ma_names = _leaf_linear_names(predictor.memory_attention)
-            _ma_targets = [
-                t for t in ("q_proj", "v_proj", "out_proj", "linear") if t in _ma_names
-            ] or _ma_names[:2]
-            _ma_mod, _ma_n = _lora_try(predictor.memory_attention, _ma_targets, "memory_attention")
-
-            if _ma_n == 0:
-                _trunk = predictor.image_encoder.trunk
-                _bb_names = _leaf_linear_names(_trunk)
-                _bb_targets = [
-                    t
-                    for t in ("qkv", "proj", "q_proj", "k_proj", "v_proj", "out_proj", "linear")
-                    if t in _bb_names
-                ] or _bb_names[:2]
-                _bb_mod, _bb_n = _lora_try(_trunk, _bb_targets, "image_encoder.trunk")
-                if _bb_n == 0:
-                    raise RuntimeError(
-                        "LoRA trial: injection failed for memory_attention and backbone"
-                    )
-                predictor.image_encoder.trunk = _bb_mod
-
-            _la_params = [p for _n, p in predictor.named_parameters() if "lora_" in _n]
-            for _p in _la_params:
-                _p.requires_grad = True
-            print(f"[LoRA trial] total lora_params={sum(p.numel() for p in _la_params)}")
+    # LoRA trial: fixed teacher, explicit image-encoder targets, one injection.
+    from lora_adapter import inject_image_lora, enable_fixed_teacher, save_image_lora
+    if not args.apply_bypass or not args.apply_WB:
+        raise ValueError("image LoRA trial requires bypass and WB")
+    targets = [f"blocks.{args.final_global_layer}.attn.qkv",
+               f"blocks.{args.final_global_layer}.attn.proj"]
+    inject_image_lora(predictor, targets)
+    enable_fixed_teacher(predictor.image_encoder)
+    print("[LoRA trial] image_encoder.trunk targets:", targets)
     train_param = [p for p in predictor.parameters() if p.requires_grad]
     # print(train_param)
     predictor.optimizer = torch.optim.AdamW(train_param, lr=args.lr)
@@ -1071,8 +1026,8 @@ def main():
     predictor.use_wandb = args.use_wandb
     predictor.iters = 0
     
+    predictor.writer = writer
     if args.use_wandb:
-        predictor.writer = writer
         try:
             os.environ["WANDB_MODE"] = "offline"
             wandb.init(
@@ -1133,7 +1088,10 @@ def main():
                         per_obj_png_file=args.per_obj_png_file,
                         
                     )
-                    torch.save(predictor.image_encoder.trunk.blocks[args.final_global_layer].bypass_branch.state_dict(), './bypass/ckpt/bypass_{}_{}_EP_{}.pth'.format(args.bypass_type, timestamp, epoch))
+                    torch.save(predictor.image_encoder.trunk.blocks[args.final_global_layer].bypass_branch.state_dict(), os.path.join(checkpoint_dir, 'bypass_{}_{}_EP_{}.pth'.format(args.bypass_type, timestamp, epoch)))
+                    adapter_path = os.path.join(checkpoint_dir,
+                        'bypass_{}_{}_EP_{}.lora.pt'.format(args.bypass_type, timestamp, epoch))
+                    print("[LoRA trial] saved:", save_image_lora(predictor, adapter_path))
                     
                 else:
                     vos_inference(
@@ -1157,10 +1115,12 @@ def main():
                     use_all_masks=args.use_all_masks,
                     per_obj_png_file=args.per_obj_png_file,
                 )
+        writer.flush()
         torch.cuda.synchronize()
         ed = time.time()
         logger.info('>>>>>>>>>>>>>>>> Training Time (Epoch {}): {} (min)'.format(epoch, (ed-st)/60))
 
+    writer.close()
     print(
         f"completed VOS prediction on {len(video_names)} videos -- "
         f"output masks saved to {args.output_mask_dir}"
