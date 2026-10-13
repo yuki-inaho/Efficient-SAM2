@@ -1,0 +1,98 @@
+{
+  "version": "native-box-v2",
+  "registered_at": "2026-10-13T12:06:18.605822+00:00",
+  "purpose": "Native Efficient-SAM2 graph parity for the supported box-prompt interface; distinct from the unchanged public manual-mask quantization gate",
+  "fixture": "sav_000001 public TRAIN",
+  "objects": [
+    0,
+    1,
+    2,
+    4
+  ],
+  "raw_frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "frame_sha256": [
+    "e1ba81f9021624a6fb0a1bf28bbef04bc8ba866361e71b06e8b74001cc196b12",
+    "d6ab1e85aee14aeb7dc6913a6890bb1cb106489d2362cee310bc2ebec50b7e34",
+    "467288821ed64b3fe445e14d80fba72e86284fb0ff2e72c1dc3bcfb7969737bd",
+    "12316ce914b51930b9238c90ce374368893abf17e41db6869355e5fa56a9c8eb",
+    "63c6c82abf97771081badf4d4cdbc92e0928d6ccf3dea896e9f133d05fbc80fd",
+    "432a1f4b8fb52e513f12cb3327e22b808124787d80e2e89ccccaf78ee752fea7",
+    "e07ac9b0478fd1a3c363ffe5f836b7be504a02b17f91d4c6d07e69800a821b64",
+    "4082b1fe78dcd89d7048c7747205f3b302551ebaf0d017ee292ce16a2b01ea07",
+    "fdc4d737dbd975a75398108890c5b91582311012a331f463d9c8f8417a0f05e9",
+    "757685d89d5cb7028ac3a6c38352b46a6ac0eccdc9c2eb2581bb771082095ee4",
+    "e44ce78418abc6d6d650ae0aeeb643d3ce1ba0a175f631e2a79d938404566d08",
+    "e2e82ae14255176849f3e754551aba715897ef231082e73b57affd61769d695b",
+    "051b01137e1409d8918d00fd4747b1da8f9f5dc9ca593aaf222ecfbd0378265a",
+    "664ec31f5fdd91beb2d41b12ba464ecc4b28f4e19e3515117a5f25f37e47d5ce",
+    "b24343c34558a38f13c0363812db120aad5e9238476c7bb556d02f0dd7823017",
+    "9b7acbfd9e6ebc6398094255106c08f546c65dfa4669d15727b33f8c2b87fe08",
+    "511f4555177087be8e849f4b05c702efa5ea0fc6c76c5de4244abf8c55e4b6b9"
+  ],
+  "boxes_xyxy_original_pixels": {
+    "0": [
+      165,
+      747,
+      253,
+      797
+    ],
+    "1": [
+      73,
+      245,
+      309,
+      783
+    ],
+    "2": [
+      258,
+      61,
+      337,
+      241
+    ],
+    "4": [
+      115,
+      393,
+      201,
+      522
+    ]
+  },
+  "prompt_source": "Tight nonempty frame0 manual-mask bounding boxes, half-open xyxy, no subsequent prompts",
+  "run_structure": "Four independent 17-frame tracks, object1 previously measured as initial parity; additional objects registered before their native results",
+  "cpu_threads": 4,
+  "native_use_gpu": false,
+  "image_size": 1024,
+  "multimask_output": false,
+  "logit_threshold": 0.0,
+  "artifact_sha256": "0c58eac7150d1b24970bc2ff1537a8847faec9e971be585bfd55411ef8a6b32b",
+  "thresholds": {
+    "mean_mask_iou_min": 0.99,
+    "min_mask_iou_min": 0.98,
+    "all_logits_finite": true,
+    "case_count": 68
+  },
+  "comparison": "Native versus Python from the same persisted GGUF, exact frames and box; report all per-frame raw-logit and mask comparisons",
+  "not_claimed": [
+    "Unprompted detection",
+    "Held-out quality",
+    "Private sequence identity quality",
+    "Mask-prompt native API support",
+    "Controlled speedup"
+  ]
+}

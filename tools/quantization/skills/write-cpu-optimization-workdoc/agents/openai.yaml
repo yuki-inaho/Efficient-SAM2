@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write CPU Optimization Workdoc"
+  short_description: "Plan reproducible CPU optimization work"
+  default_prompt: "Use $write-cpu-optimization-workdoc to write a Japanese CPU optimization plan with fixed accuracy gates."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review CPU Optimization Workdoc"
+  short_description: "Audit CPU optimization evidence and plans"
+  default_prompt: "Use $review-cpu-optimization-workdoc to audit this CPU optimization workdoc and safely improve it."

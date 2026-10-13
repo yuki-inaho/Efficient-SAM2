@@ -146,7 +146,7 @@ class SAM2VideoPredictor(SAM2Base):
         self.mem_info['num_frame_to_prune'] = self.num_frame_to_prune
         # self.enable_mem_prune = self.mem_info['enable_mem_prune']
         if enable_MeP_info:
-            u_mode = torch.zeros((64,64), dtype=torch.bool, device='cuda')
+            u_mode = torch.zeros((64,64), dtype=torch.bool, device=self.device)
             u_mode[::8,::8] = True
             self.uniform_mode = u_mode.reshape(-1)
         

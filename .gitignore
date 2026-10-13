@@ -15,3 +15,6 @@ wandb/*
 outputs
 outputs2
 *.sh
+
+# Local task records may contain private dataset paths and annotations.
+temp/workdoc_*.md
