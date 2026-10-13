@@ -15,3 +15,10 @@ wandb/*
 outputs
 outputs2
 *.sh
+# local additions (2026-10-13)
+bypass/ckpt/*.pth
+eval/
+eval_v3/
+
+# Generated checkpoints may also be archived in nested directories.
+bypass/ckpt/**/*.pth

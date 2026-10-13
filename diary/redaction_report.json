@@ -1,0 +1,12 @@
+{
+  "method": "Rewritten as general engineering records; raw workspace records are not published.",
+  "excluded": [
+    "capture identifiers",
+    "application object categories",
+    "private repository names",
+    "local paths",
+    "raw media",
+    "credentials"
+  ],
+  "synthetic_examples": true
+}
