@@ -55,6 +55,14 @@ def local_prompts(detections, index, rectangle):
         ):
             continue
         point = np.asarray(candidate["center"], float)
+        # Partial and full detections of one object may have far-apart centers.
+        # Ambiguous overlap is not enough evidence to label the other center background.
+        if np.all(point >= box[:2]) and np.all(point <= box[2:]):
+            continue
+        if "box" in candidate or "corners" in candidate:
+            candidate_box = box_of(candidate)
+            if np.all(center >= candidate_box[:2]) and np.all(center <= candidate_box[2:]):
+                continue
         distance = np.linalg.norm(point - center)
         # Nearby hypotheses could be the same object; do not carve it apart.
         if max(3, 0.6 * min(box[2:] - box[:2])) < distance < 2 * max(box[2:] - box[:2]):

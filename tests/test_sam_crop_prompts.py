@@ -77,3 +77,24 @@ def test_explicit_negative_at_positive_point_is_rejected():
             0,
             (0, 0, 1024, 1024),
         )
+
+
+def test_partial_duplicate_inside_larger_candidate_is_not_a_negative():
+    detections = [
+        {"center": [410, 450], "box": [370, 400, 450, 480]},
+        {"center": [410, 350], "box": [320, 250, 500, 500]},
+        {"center": [540, 450], "box": [510, 410, 570, 490]},
+    ]
+    points, labels, _ = local_prompts(detections, 0, (0, 0, 1024, 1024))
+    assert points.tolist() == [[410, 450], [540, 450]]
+    assert labels.tolist() == [1, 0]
+
+
+def test_candidate_center_inside_target_box_is_not_an_automatic_negative():
+    detections = [
+        {"center": [400, 400], "box": [300, 350, 500, 450]},
+        {"center": [485, 410], "box": [465, 390, 505, 430]},
+    ]
+    points, labels, _ = local_prompts(detections, 0, (0, 0, 1024, 1024))
+    assert points.tolist() == [[400, 400]]
+    assert labels.tolist() == [1]
