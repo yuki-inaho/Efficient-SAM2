@@ -154,3 +154,22 @@ object identity, segmentation boundaries, or dataset completeness.
 Validation: nine replacement tests, twelve prompt tests, and six retirement tests
 pass. The application additionally checks that an expanded crop is rendered at
 the correct full-image coordinates.
+
+
+## Provisional temporal seeds
+
+`tools/workflow/temporal_seed_review.py` checks the review provenance of a seed
+before a caller starts a temporal experiment. Existing `accepted_pilot` records
+retain their review contract. A record marked
+`accepted_draft_for_temporal_probe` requires `allow_draft=True`, a named reviewer,
+observations, and a nonempty list of evidence files with matching SHA-256 hashes.
+Unknown status, missing evidence, and changed evidence fail closed. The function
+does not change the seed record or promote its approval status.
+
+Callers must still validate image and mask hashes, crop geometry, and source
+pixels. Evidence integrity does not establish segmentation accuracy. Propagated
+results require visual review for drift, object merges, occlusion, and entry or
+exit before use; a provisional seed is not an approved training label.
+
+Validation: nine tests cover explicit experiment scope, stale or missing
+evidence, missing review text, status preservation, and pilot compatibility.
