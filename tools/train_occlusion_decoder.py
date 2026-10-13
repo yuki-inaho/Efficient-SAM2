@@ -20,9 +20,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from tools.workflow.occlusion_augmentation import augment_thin_green  # noqa: E402
-from tools.workflow.occlusion_training_data import load_reviewed_pairs  # noqa: E402
-from tools.workflow.supervised_mask_loss import supervised_mask_loss  # noqa: E402
+from tools.workflow.occlusion_augmentation import augment_thin_green
+from tools.workflow.occlusion_training_data import load_reviewed_pairs
+from tools.workflow.supervised_mask_loss import supervised_mask_loss
 
 
 def sha(path):
@@ -35,7 +35,9 @@ def forward_mask(predictor, row, rgb):
     model = predictor.model
     points = torch.tensor(row["prompt_points"], device="cuda", dtype=torch.float32)
     labels = torch.tensor(row["prompt_labels"], device="cuda", dtype=torch.int32)
-    box = torch.tensor(row["local_box"], device="cuda", dtype=torch.float32).reshape(2, 2)
+    box = torch.tensor(row["local_box"], device="cuda", dtype=torch.float32).reshape(
+        2, 2
+    )
     coords = (
         torch.cat([box, points], dim=0)
         / torch.tensor([rgb.shape[1], rgb.shape[0]], device="cuda")
@@ -55,7 +57,9 @@ def forward_mask(predictor, row, rgb):
         repeat_image=False,
         high_res_features=predictor._features["high_res_feats"],
     )
-    return F.interpolate(masks.float(), size=rgb.shape[:2], mode="bilinear", align_corners=False)
+    return F.interpolate(
+        masks.float(), size=rgb.shape[:2], mode="bilinear", align_corners=False
+    )
 
 
 def metrics(pred, target, occ):
@@ -136,8 +140,11 @@ def main():
     p.add_argument("--lr", type=float, default=1e-5)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--negative-weight", type=float, default=8.0)
+    p.add_argument("--boundary-background-weight", type=float, default=0.0)
     p.add_argument(
-        "--evaluation-role", choices=["heldout", "reused_development"], default="heldout"
+        "--evaluation-role",
+        choices=["heldout", "reused_development"],
+        default="heldout",
     )
     args = p.parse_args()
     if args.steps < 1 or args.lr <= 0:
@@ -172,7 +179,9 @@ def main():
             param.requires_grad_(True)
     predictor = SAM2ImagePredictor(model)
     optimizer = torch.optim.AdamW(
-        [p for p in decoder.parameters() if p.requires_grad], lr=args.lr, weight_decay=0.01
+        [p for p in decoder.parameters() if p.requires_grad],
+        lr=args.lr,
+        weight_decay=0.01,
     )
     writer = SummaryWriter(str(args.out / "tensorboard"))
     initial = {k: v.detach().cpu().clone() for k, v in decoder.state_dict().items()}
@@ -181,13 +190,19 @@ def main():
             {
                 "status": "TRAINING_PILOT",
                 "arguments": {
-                    k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()
+                    k: str(v) if isinstance(v, Path) else v
+                    for k, v in vars(args).items()
                 },
                 "manifest_sha256": sha(args.manifest),
                 "base_checkpoint_sha256": sha(args.checkpoint),
-                "split_objects": {s: [r["object_id"] for r in v] for s, v in split.items()},
-                "loss": "hidden-weighted BCE + Dice + explicit negative neighborhoods/point loss",
+                "split_objects": {
+                    s: [r["object_id"] for r in v] for s, v in split.items()
+                },
+                "loss": "hidden BCE + Dice + negative points + optional exterior background loss",
                 "runner_sha256": sha(Path(__file__)),
+                "loss_module_sha256": sha(
+                    ROOT / "tools/workflow/supervised_mask_loss.py"
+                ),
                 "trainable": "mask decoder excluding cached high-res projections; encoders frozen",
                 "negative_points": (
                     "preserved original scene prompts; never mark synthetic occluder as background"
@@ -225,6 +240,7 @@ def main():
                 row["prompt_points"],
                 row["prompt_labels"],
                 negative_weight=args.negative_weight,
+                boundary_background_weight=args.boundary_background_weight,
             )
         if not torch.isfinite(loss):
             raise ValueError("non-finite supervised loss")
@@ -293,7 +309,9 @@ def main():
         args.out / "last_decoder.pt",
     )
     # Freeze selection before inspecting held-out test results.
-    selected = torch.load(args.out / "best_decoder.pt", map_location="cpu", weights_only=True)
+    selected = torch.load(
+        args.out / "best_decoder.pt", map_location="cpu", weights_only=True
+    )
     decoder.load_state_dict(initial)
     base = evaluate(
         predictor,
@@ -315,9 +333,9 @@ def main():
         row = split["test"][0]
         before = forward_mask(predictor, row, row["rgb"]).clone()
         decoder.load_state_dict(
-            torch.load(args.out / "best_decoder.pt", map_location="cpu", weights_only=True)[
-                "decoder"
-            ]
+            torch.load(
+                args.out / "best_decoder.pt", map_location="cpu", weights_only=True
+            )["decoder"]
         )
         after = forward_mask(predictor, row, row["rgb"])
     if not torch.equal(before, after):
@@ -343,11 +361,15 @@ def main():
     (args.out / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     run_path = args.out / "run.json"
     run_record = json.loads(run_path.read_text())
-    run_record.update(status=report["status"], report_path="report.json", selected_step=best_step)
+    run_record.update(
+        status=report["status"], report_path="report.json", selected_step=best_step
+    )
     run_path.write_text(json.dumps(run_record, indent=2) + "\n")
     writer.close()
     print(
-        json.dumps({k: report[k] for k in ("status", "best_step", "base", "tuned")}, indent=2),
+        json.dumps(
+            {k: report[k] for k in ("status", "best_step", "base", "tuned")}, indent=2
+        ),
         flush=True,
     )
 

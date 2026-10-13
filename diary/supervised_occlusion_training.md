@@ -88,3 +88,9 @@ The local prompt helper retains explicit negative points before adding up to fou
 Seven geometry and prompt regression tests cover image borders, large boxes, duplicate hypotheses, explicit exclusions, the automatic limit, and conflicting labels. This establishes prompt behavior, not dataset quality. Synthetic occluders over the target must not receive new negative labels because the unchanged pre-occlusion target remains foreground.
 
 Automatic point selection also excludes pairs whose centers lie inside each other's boxes. This protects against partial and full detections of the same object with distant centers. Two adversarial tests cover these cases. This conservative check does not establish object identity: duplicate boxes and masks still require review, and a partial box may continue to produce an incomplete mask even after conflicting negatives are removed.
+
+## Optional exterior background experiment
+
+`--boundary-background-weight` adds an optional penalty for predictions in the background outside the reviewed target. It protects the target plus a three-pixel uncertainty band, then evaluates the exterior up to twelve pixels away and synthetic occluder pixels outside the protected region. The default is zero and preserves the earlier loss. The experiment records the loss module hash alongside its configuration.
+
+Gradient tests verify that the penalty suppresses confident exterior predictions without changing foreground or uncertain-boundary gradients. This is an experimental loss term, not a claim of improved quality. Review clean boundaries, synthetic occlusion recovery and outside-target leakage separately before adopting a trained checkpoint.
