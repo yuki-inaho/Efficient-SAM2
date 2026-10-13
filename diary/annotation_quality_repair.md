@@ -222,3 +222,39 @@ Keep prior masks and missed-visible decisions, linking recovery evidence in a
 new revision. Verify each added ID still has pixels after overlap resolution,
 unchanged observations remain intact, and every output frame decodes. A local
 draft recovery does not approve the full sequence, tracking, or training labels.
+
+## Approval required for export and training preflight
+
+`python -m tools.workflow.build_sav_dataset` requires `--quality-approval`.
+Its JSON bundle contains `schema_version: 1`, absolute `reference_path` and
+`review_path`, their `reference_sha256` and `review_sha256`, and `masks_dir`.
+The existing annotation audit is recomputed against the actual source images and
+uint16 instance maps. A cached PASS report is insufficient. Each accepted frame
+review must additionally set `rgb_inventory_complete`, `boundaries_accepted`,
+and `tracks_accepted` to true and provide nonempty `evidence` entries containing
+an actual file `path` and its `sha256`. These statements require truthful visual
+review; hashes cannot establish whether an inventory or contour is correct.
+Do not create approval records automatically from model predictions.
+
+The exporter validates the full approved source scope before selecting an
+optional contiguous clip. JPEG sources are copied byte for byte. All visible IDs
+are preserved, including objects entering after the first frame. An explicit ID
+selection that drops visible objects is rejected before writing. Per-object
+output includes zero masks for an object's absent frames. Packed output rejects
+IDs greater than 255. PNG/SR conversion and ignore/depth eligibility are outside
+this exporter contract and need a separately reviewed mapping.
+
+Each export records a `quality_receipt` in `manifest_<video>.json`.
+`tools.workflow.quality_preflight.verify_training_inputs(data)` takes
+`base_video_dir`, `input_mask_dir`, and `video_list_file`. It rechecks approval,
+source provenance, the selected frame mapping, exported RGB bytes, every mask's
+actual pixels, and the complete file set. Changed inputs, stale receipts, or
+missing objects fail closed. Call it before creating a training run, allocating
+GPU resources, or launching a subprocess. This helper does not intercept direct
+calls to other training scripts; callers must wire it into their own entry point.
+A dry-run may print commands but must not train or claim quality approval.
+
+Synthetic regression tests exercise missing/stale approval, review completeness,
+changed evidence, alternate source directories, late entrants, changed source or
+exported pixels, altered receipts, and CLI rejection before output. A passing
+fixture validates the guard contract, not the annotation quality of a real scene.
