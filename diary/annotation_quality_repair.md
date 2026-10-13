@@ -173,3 +173,26 @@ exit before use; a provisional seed is not an approved training label.
 
 Validation: nine tests cover explicit experiment scope, stale or missing
 evidence, missing review text, status preservation, and pilot compatibility.
+
+
+## Individual temporal decisions
+
+`tools/workflow/temporal_mask_review.py` selects only observations explicitly
+marked `accept_draft`. Every requested frame and seed requires a unique decision,
+including empty predictions. Review decisions bind the image and mask hashes,
+reviewer, observations, and visual evidence covering the relevant frame.
+
+`reject_identity_switch` excludes an incorrect association without declaring the
+new object background. `missed_visible` records a visible object with no predicted
+mask. `defer_mask` preserves unresolved cases. `visually_absent` is a visual
+decision, never inferred automatically from an empty prediction. The helper
+preserves every input record and returns only selected frame/seed pairs.
+
+Callers must bind the review to the exact track manifest, validate image lineage
+and binary mask geometry, retain excluded decisions, and review duplicates before
+composition. This contract applies to provisional draft supplementation; it does
+not approve boundaries, complete inventories, tracking, or training labels.
+
+Validation: 23 regression tests cover identity-switch exclusion, empty-prediction
+semantics, complete scope, duplicate/missing decisions, stale evidence or masks,
+and unchanged inputs.
