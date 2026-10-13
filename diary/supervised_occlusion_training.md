@@ -80,3 +80,9 @@ instance-center correspondence and artifact-bound visual review records. It fail
 on missing, merged or unreferenced instances and absent/stale reviews. Detector candidates
 are not ground truth: visual review must also account for detector misses and false positives.
 One-to-one center correspondence is necessary, but does not certify boundaries or completeness.
+
+## Explicit negative point priority
+
+The local prompt helper retains explicit negative points before adding up to four nearby automatic negatives. Near-duplicate hypotheses are excluded to avoid splitting the target itself. Repeated negative coordinates are deduplicated; a negative at the positive pixel is rejected. Reviewed prompt-only mode prevents detector candidates from changing the verified prompt set.
+
+Seven geometry and prompt regression tests cover image borders, large boxes, duplicate hypotheses, explicit exclusions, the automatic limit, and conflicting labels. This establishes prompt behavior, not dataset quality. Synthetic occluders over the target must not receive new negative labels because the unchanged pre-occlusion target remains foreground.
