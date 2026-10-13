@@ -196,3 +196,29 @@ not approve boundaries, complete inventories, tracking, or training labels.
 Validation: 23 regression tests cover identity-switch exclusion, empty-prediction
 semantics, complete scope, duplicate/missing decisions, stale evidence or masks,
 and unchanged inputs.
+
+## Reviewed negative points and paired comparisons
+
+Place positive points inside the target's visible region. Negative points may
+identify a visibly distinct neighboring object, actual occluder, or background.
+Do not automatically treat another proposal as a different object: partial
+proposals for the same physical object and unresolved regions cannot supply
+verified negative points. Inspect the original image beside any enhanced image.
+
+Compare predictions with and without reviewed negatives while keeping the image,
+crop, box, positive points, model weights, and output mode fixed. Preserve both
+predictions, inference prompts, hashes, and per-object visual observations.
+Evaluate both masks against the same reviewed point set, including negative
+points not supplied to the positive-only run. Store these comparison points
+separately from inference prompts so the record describes what the model used.
+
+Additional negatives can remove spill into an occluder or degrade the contour.
+Choose a result only after inspecting omissions, spill, and object merges; retain
+an unresolved decision if neither prediction is usable. Zero point violations
+does not approve the boundary. Compare any recovered object against existing
+instances before composition and merge identities only with visual evidence.
+
+Keep prior masks and missed-visible decisions, linking recovery evidence in a
+new revision. Verify each added ID still has pixels after overlap resolution,
+unchanged observations remain intact, and every output frame decodes. A local
+draft recovery does not approve the full sequence, tracking, or training labels.
