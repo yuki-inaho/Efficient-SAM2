@@ -21,8 +21,8 @@ def choose_crop(box, image_wh, side=1024):
         raise ValueError("box outside image")
     side = max(side, int(np.ceil(max(hi - lo) + 96)))
     cw, ch = min(side, width), min(side, height)
-    xs = sorted(set([*range(0, width - cw + 1, max(1, cw // 2)), width - cw]))
-    ys = sorted(set([*range(0, height - ch + 1, max(1, ch // 2)), height - ch]))
+    xs = sorted({*range(0, width - cw + 1, max(1, cw // 2)), width - cw})
+    ys = sorted({*range(0, height - ch + 1, max(1, ch // 2)), height - ch})
     choices = [
         (x, y, cw, ch)
         for y in ys
@@ -36,7 +36,9 @@ def choose_crop(box, image_wh, side=1024):
         choices = [(x, y, cw, ch)]
     return min(
         choices,
-        key=lambda r: (r[0] + r[2] / 2 - center[0]) ** 2 + (r[1] + r[3] / 2 - center[1]) ** 2,
+        key=lambda r: (
+            (r[0] + r[2] / 2 - center[0]) ** 2 + (r[1] + r[3] / 2 - center[1]) ** 2
+        ),
     )
 
 
@@ -44,6 +46,16 @@ def local_prompts(detections, index, rectangle):
     d = detections[index]
     box = box_of(d)
     center = np.asarray(d["center"], float)
+    raw_positive = np.concatenate(
+        [center[None], np.asarray(d.get("positive_points", []), float).reshape(-1, 2)]
+    )
+    if not np.isfinite(raw_positive).all():
+        raise ValueError("invalid positive point")
+    positives = []
+    for point in raw_positive:
+        if not any(np.array_equal(np.rint(point), np.rint(q)) for q in positives):
+            positives.append(point)
+    positive = np.asarray(positives)
     x, y, w, h = rectangle
     other = []
     for j, candidate in enumerate(detections):
@@ -55,13 +67,18 @@ def local_prompts(detections, index, rectangle):
         ):
             continue
         point = np.asarray(candidate["center"], float)
+        if any(np.array_equal(np.rint(point), np.rint(q)) for q in positive):
+            continue
         # Partial and full detections of one object may have far-apart centers.
         # Ambiguous overlap is not enough evidence to label the other center background.
         if np.all(point >= box[:2]) and np.all(point <= box[2:]):
             continue
         if "box" in candidate or "corners" in candidate:
             candidate_box = box_of(candidate)
-            if np.all(center >= candidate_box[:2]) and np.all(center <= candidate_box[2:]):
+            if any(
+                np.all(q >= candidate_box[:2]) and np.all(q <= candidate_box[2:])
+                for q in positive
+            ):
                 continue
         distance = np.linalg.norm(point - center)
         # Nearby hypotheses could be the same object; do not carve it apart.
@@ -70,7 +87,11 @@ def local_prompts(detections, index, rectangle):
     explicit = np.asarray(d.get("negative_points", []), float).reshape(-1, 2)
     if not np.isfinite(explicit).all():
         raise ValueError("invalid explicit negative point")
-    if any(np.array_equal(np.rint(point), np.rint(center)) for point in explicit):
+    if any(
+        np.array_equal(np.rint(point), np.rint(q))
+        for point in explicit
+        for q in positive
+    ):
         raise ValueError("conflicting positive and explicit negative point")
     unique = []
     automatic_count = 0
@@ -90,12 +111,40 @@ def local_prompts(detections, index, rectangle):
                 automatic_count += 1
             unique.append(point)
     neg = np.asarray(unique, float).reshape(-1, 2)
-    points = np.concatenate([center[None], neg]) - [x, y]
-    labels = np.r_[1, np.zeros(len(neg), int)]
-    if np.any(points[0] < 0) or points[0, 0] >= w or points[0, 1] >= h:
+    points = np.concatenate([positive, neg]) - [x, y]
+    labels = np.r_[np.ones(len(positive), int), np.zeros(len(neg), int)]
+    pp = points[labels == 1]
+    if np.any(pp < 0) or np.any(pp[:, 0] >= w) or np.any(pp[:, 1] >= h):
         raise ValueError("positive point outside crop")
     return (
         points.astype(np.float32),
         labels.astype(np.int32),
         (box - [x, y, x, y]).astype(np.float32),
     )
+
+
+def prompt_coverage(mask, points, labels):
+    """Measure all positive/negative constraints, retaining the primary center check."""
+    mask = np.asarray(mask, bool)
+    points, labels = np.asarray(points, float), np.asarray(labels)
+    if (
+        mask.ndim != 2
+        or points.ndim != 2
+        or points.shape[1] != 2
+        or labels.shape != points.shape[:1]
+        or not len(points)
+        or not np.isfinite(points).all()
+        or not np.isin(labels, [0, 1]).all()
+        or labels[0] != 1
+    ):
+        raise ValueError("invalid mask or labeled point prompts")
+    h, w = mask.shape
+    if np.any(points < 0) or np.any(points[:, 0] >= w) or np.any(points[:, 1] >= h):
+        raise ValueError("point outside mask")
+    coords = np.minimum(np.rint(points).astype(int), [w - 1, h - 1])
+    values = mask[coords[:, 1], coords[:, 0]]
+    return {
+        "own_center": bool(values[0]),
+        "positive_violations": int((~values[labels == 1]).sum()),
+        "negative_violations": int(values[labels == 0].sum()),
+    }

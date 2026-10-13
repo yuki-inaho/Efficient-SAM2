@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
-
-from tools.workflow.sam_crop_prompts import choose_crop, local_prompts
+from tools.workflow.sam_crop_prompts import choose_crop, local_prompts, prompt_coverage
 
 
 def test_boundary_crop_retains_box_and_pixel_coordinates():
@@ -61,8 +60,15 @@ def test_verified_negatives_are_not_overridden_by_detector_hypotheses():
 
 def test_explicit_negative_survives_nearer_automatic_candidates():
     detections = [
-        {"center": [400, 400], "box": [350, 350, 450, 450], "negative_points": [[600, 550]]},
-        *[{"center": p} for p in [[480, 400], [320, 400], [400, 480], [400, 320], [510, 400]]],
+        {
+            "center": [400, 400],
+            "box": [350, 350, 450, 450],
+            "negative_points": [[600, 550]],
+        },
+        *[
+            {"center": p}
+            for p in [[480, 400], [320, 400], [400, 480], [400, 320], [510, 400]]
+        ],
     ]
     points, labels, _ = local_prompts(detections, 0, (0, 0, 1024, 1024))
     assert points[1].tolist() == [600, 550]
@@ -73,7 +79,13 @@ def test_explicit_negative_survives_nearer_automatic_candidates():
 def test_explicit_negative_at_positive_point_is_rejected():
     with pytest.raises(ValueError, match="conflicting"):
         local_prompts(
-            [{"center": [400, 400], "box": [350, 350, 450, 450], "negative_points": [[400, 400]]}],
+            [
+                {
+                    "center": [400, 400],
+                    "box": [350, 350, 450, 450],
+                    "negative_points": [[400, 400]],
+                }
+            ],
             0,
             (0, 0, 1024, 1024),
         )
@@ -98,3 +110,51 @@ def test_candidate_center_inside_target_box_is_not_an_automatic_negative():
     points, labels, _ = local_prompts(detections, 0, (0, 0, 1024, 1024))
     assert points.tolist() == [[400, 400]]
     assert labels.tolist() == [1]
+
+
+def test_multiple_visible_parts_remain_positive_points():
+    d = {
+        "center": [120, 120],
+        "box": [110, 110, 150, 160],
+        "positive_points": [[140, 150], [120, 120]],
+        "negative_points": [[180, 130]],
+        "verified_negatives_only": True,
+    }
+    points, labels, _ = local_prompts([d], 0, (100, 100, 256, 256))
+    assert points.tolist() == [[20, 20], [40, 50], [80, 30]]
+    assert labels.tolist() == [1, 1, 0]
+    d["negative_points"] = [[140, 150]]
+    with pytest.raises(ValueError, match="conflicting"):
+        local_prompts([d], 0, (100, 100, 256, 256))
+
+
+def test_coverage_counts_labels_instead_of_point_order():
+    mask = np.zeros((8, 8), bool)
+    mask[2, 2] = mask[5, 5] = True
+    points, labels = [[2, 2], [5, 5], [1, 6]], [1, 1, 0]
+    assert prompt_coverage(mask, points, labels) == {
+        "own_center": True,
+        "positive_violations": 0,
+        "negative_violations": 0,
+    }
+    mask[5, 5] = False
+    mask[6, 1] = True
+    assert prompt_coverage(mask, points, labels) == {
+        "own_center": True,
+        "positive_violations": 1,
+        "negative_violations": 1,
+    }
+
+
+def test_automatic_candidate_cannot_negate_verified_extra_positive():
+    detections = [
+        {
+            "center": [400, 400],
+            "box": [350, 350, 450, 450],
+            "positive_points": [[510, 400]],
+        },
+        {"center": [510, 400], "box": [460, 350, 560, 450]},
+    ]
+    points, labels, _ = local_prompts(detections, 0, (0, 0, 1024, 1024))
+    assert points.tolist() == [[400, 400], [510, 400]]
+    assert labels.tolist() == [1, 1]
