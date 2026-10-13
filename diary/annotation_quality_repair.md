@@ -139,3 +139,18 @@ checkpoint restoration followed by successful inference before deployment is con
 
 File creation, a zero exit code or unit-test success alone does not establish end-to-end
 annotation quality. Each acceptance check must be linked to its actual output.
+
+## Reviewed replacement geometry validation
+
+A corrected target box can require a larger crop with a different origin.
+`tools/workflow/reviewed_mask_validation.py` validates such replacements before
+composition: source-image bounds, integer crop geometry, binary mask dimensions
+and SHA, unchanged candidate identity, prompt-to-image origin agreement, measured
+positive/negative coverage, and foreground area. Stale saved metrics are rejected.
+The review caller must independently verify image provenance and visual evidence.
+This helper checks artifact consistency and point constraints; it does not approve
+object identity, segmentation boundaries, or dataset completeness.
+
+Validation: nine replacement tests, twelve prompt tests, and six retirement tests
+pass. The application additionally checks that an expanded crop is rendered at
+the correct full-image coordinates.
