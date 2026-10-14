@@ -258,3 +258,30 @@ Synthetic regression tests exercise missing/stale approval, review completeness,
 changed evidence, alternate source directories, late entrants, changed source or
 exported pixels, altered receipts, and CLI rejection before output. A passing
 fixture validates the guard contract, not the annotation quality of a real scene.
+
+
+## Full-sequence video drafts before local corrections
+
+When a user requests a rough full-sequence annotation first, produce that draft
+before refining individual boundaries. Keep its unapproved status separate from
+formal training and export gates. Use the video predictor's temporal memory;
+frame-local masks with repeated numeric IDs do not constitute tracking.
+
+Initialize with deduplicated detector-derived boxes and points, admit entering
+objects, and retain seed provenance. `tools/workflow/draft_tracklet_association.py`
+provides greedy one-to-one mask correspondence and records competing edges.
+It computes geometry once and intersects only bounding-box overlap, preserving
+the full-mask overlap definition while avoiding repeated full-image scans.
+Candidates and predictions must use identical dimensions and coordinates.
+
+Keep persistent tracklet IDs separate from per-frame candidate IDs and derive
+colors from persistent IDs. For a measured-depth scope, recompute eligibility on
+each propagated mask; retain far and unknown reasons internally. Missing depth
+is neither evidence of proximity nor background. Record the exact metric
+(for example, calibrated RGB-camera forward Z versus Euclidean range).
+
+Common camera motion alone cannot justify merging neighboring fruits. Require
+spatial and temporal overlap, preserve source tracklets and ambiguous matches,
+and review proposed merges. Validate frame ordering, input hashes, depth/color
+invariants and the entire encoded video, then correct failures by tracklet.
+A decodable draft is not evidence of complete or correct fruit annotation.
